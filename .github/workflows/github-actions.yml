@@ -23,7 +23,7 @@ jobs:
     - name: Eslint fix
       run: |
         cd client
-        npm run eslint . --fix
+        npx eslint . --fix
     - name: Build project
       run: |
           cd client
