@@ -17,4 +17,4 @@ node_modules
 ignition/deployments/chain-31337
 
 # Private Keys
-private-keys.js
+private-keys.ts
