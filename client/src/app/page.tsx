@@ -1,13 +1,22 @@
 'use client'
-import { ExampleButton } from '@/components/ExampleButton'
-import Link from 'next/link'
+
+import { AmountCard } from '@/features/AmountCard/AmountCard'
+import { Container, styled } from '@mui/material'
 
 export default function Home() {
   return (
-    <div>
-      <Link href={'/welcome-page'}>
-        <ExampleButton>Перейти на страницу Welcome!</ExampleButton>
-      </Link>
-    </div>
+    <CustomContainer>
+      <div>
+        <AmountCard />
+      </div>
+      <div>{/* TODO: тут располагается информация */}</div>
+    </CustomContainer>
   )
 }
+
+const CustomContainer = styled(Container)`
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+`
