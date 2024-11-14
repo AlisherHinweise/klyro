@@ -1,7 +1,5 @@
-'use client'
-
 import { AmountCard } from '@/features/AmountCard/AmountCard'
-import { Container, styled } from '@mui/material'
+import { CustomContainer } from './globalStyled'
 
 export default function Home() {
   return (
@@ -13,10 +11,3 @@ export default function Home() {
     </CustomContainer>
   )
 }
-
-const CustomContainer = styled(Container)`
-  width: 100%;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-`

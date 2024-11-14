@@ -1,12 +1,7 @@
-import { Input, styled } from '@mui/material'
+import { TextFieldProps } from '@mui/material'
 import React from 'react'
+import { StyledInput } from './styled'
 
-export const CustomInput = () => {
-  return <StyledInput />
+export const CustomInput: React.FC<TextFieldProps> = (props) => {
+  return <StyledInput {...props} />
 }
-
-const StyledInput = styled(Input)`
-  background-color: #19212f;
-  border: 1px solid #1c2a43;
-  border-radius: 8px;
-`
