@@ -1,13 +1,13 @@
-'use client'
-import { ExampleButton } from '@/components/ExampleButton'
-import Link from 'next/link'
+import { AmountCard } from '@/features/AmountCard/AmountCard'
+import { CustomContainer } from './globalStyled'
 
 export default function Home() {
   return (
-    <div>
-      <Link href={'/welcome-page'}>
-        <ExampleButton>Перейти на страницу Welcome!</ExampleButton>
-      </Link>
-    </div>
+    <CustomContainer>
+      <div>
+        <AmountCard />
+      </div>
+      <div>{/* TODO: тут располагается информация */}</div>
+    </CustomContainer>
   )
 }
