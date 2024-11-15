@@ -22,6 +22,3 @@ export const LogoImage = styled('img')`
   object-fit: cover;
 `
 
-export const ButtonContainer = styled('div')`
-  
-`
