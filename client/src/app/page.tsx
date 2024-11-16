@@ -8,7 +8,9 @@ export default function Home() {
       <div>
         <AmountCard />
       </div>
-      <div><InfoCard/></div>
+      <div>
+        <InfoCard />
+      </div>
     </CustomContainer>
   )
 }
