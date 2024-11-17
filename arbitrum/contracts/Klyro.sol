@@ -81,38 +81,62 @@ contract Klyro is Ownable, ReentrancyGuard, Pausable {
         }
 
         uint256 liquidationPrice = calculateLiquidationPrice(msg.value, _leverage); // need to be done
-        uin256 borrowedAmountUSDC = maxAvailableForBorrow(msg.value); // need to be done
+        uint256 totalDeposited = msg.value;
+        uint256 currentDeposit = msg.value;
 
-        for (uint256 i = 0; i < _leverage; i++) {
-            // execute deposit on Silo
-            ISiloRepository.Action[] memory actions = new ISiloRepository.Action[](2);
-            actions[0] = ISiloRepository.Action({
-                actionType: ISiloRepository.ActionType.Deposit,
-                silo: SILO_POOL,
-                asset: WETH,
-                amount: msg.value,
-                collateralOnly: false
-            });
-            actions[1] = ISiloRepository.Action({
+        WETH.deposit{value: msg.value}();
+        TransferHelper.safeApprove(address(WETH), address(siloRepository), msg.value);
+
+        // execute deposit on Silo
+        ISiloRepository.Action[] memory firstAction = new ISiloRepository.Action[](1);
+        actions[0] = ISiloRepository.Action({
+            actionType: ISiloRepository.ActionType.Deposit,
+            silo: SILO_POOL,
+            asset: WETH,
+            amount: msg.value,
+            collateralOnly: false
+        });
+
+        siloRepository.execute(firstAction);
+
+        for (uint256 i = 1; i < _leverage; i++) {
+            //borrow USDC
+            uint256 borrowAmount = maxAvailableForBorrow(currentDeposit);
+
+            ISiloRepository.Action[] memory borrowAction = new ISiloRepository.Action[](1);
+            borrowAction[0] = ISiloRepository.Action({
                 actionType: ISiloRepository.ActionType.Borrow,
                 silo: SILO_POOL,
                 asset: USDC,
-                amount: borrowedAmountUSDC, 
+                amount: borrowAmount,
                 collateralOnly: false
             });
-
-            siloRepository.execute(actions);
+            siloRepository.execute(borrowAction);
 
             //perform swap from USDC.e back to ETH to continue looping
+            uint256 ethReceived = swapExactInputSingle(borrowAmount);
 
-            uint256 wethAfterLoop = swapExactInputSingle(borrowedAmountUSDC);
-            WETH.withdraw(wethAfterLoop); // swap weth to eth
+            WETH.deposit{value: ethReceived}();
+            TransferHelper.safeApprove(address(WETH), address(siloRepository), ethReceived);
+
+            ISiloRepository.Action[] memory depositAction = new ISiloRepository.Action[](1);
+            depositAction[0] = ISiloRepository.Action({
+                actionType: ISiloRepository.ActionType.Deposit,
+                silo: SILO_POOL,
+                asset: WETH,
+                amount: ethReceived,
+                collateralOnly: false
+            });
+            siloRepository.execute(depositAction);
+
+            currentDeposit = ethReceived;
+            totalDeposited += ethReceived;
         }
 
         // adding info about user's position to database
         positions[msg.sender].push(Position({
             depositedAmount: msg.value;
-            borrowedAmount: availableForBorrow(msg.value); //is it even needed? borrow should't be an option for user
+            borrowedAmount: totalDeposited - msg.value; //is it even needed? borrow should't be an option for user
             leverage: _leverage;
             liquidationPrice: liquidationPrice;
         }));
@@ -139,6 +163,10 @@ contract Klyro is Ownable, ReentrancyGuard, Pausable {
         uint256 earnedAmount = calculateProfit(user); // need to be done
 
         emit PositionClosed(msg.sender, user.depositedAmount, earnedAmount);
+    }
+
+    function maxAvailableForBorrow(uint256 collateralAmount) internal pure returns (uint256) {
+        return (collateralAmount * 74) / 100;
     }
 
     // need to use an oracle. no oracle for now
