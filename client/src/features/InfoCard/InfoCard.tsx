@@ -9,6 +9,7 @@ import {
   InfoDivider,
 } from './styled'
 import { CustomCard } from '@/components/CustomCard/CustomCard'
+import { InfoCardContent } from '@/componets/CustomCardContent/InfoCardContent'
 
 export const InfoCard = () => {
   return (
@@ -25,22 +26,7 @@ export const InfoCard = () => {
             Info
           </CustomTypography>
           <CardContainer>
-            <InfoDivider>Final state</InfoDivider>
-            <TwoColsContainer>
-              <CustomTypography>Lend</CustomTypography>
-              <InfoInput
-                variant="standard"
-                placeholder={'0.0'}
-                slotProps={{
-                  input: {
-                    disableUnderline: true,
-                    endAdornment: (
-                      <InputAdornment position="start">ETH</InputAdornment>
-                    ),
-                  },
-                }}
-              />
-            </TwoColsContainer>
+            <InfoCardContent></InfoCardContent>
             <TwoColsContainer>
               <CustomTypography>Borrow</CustomTypography>
               <InfoInput
