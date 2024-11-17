@@ -1,17 +1,27 @@
 import React from 'react'
-import { CardContent, InputAdornment } from '@mui/material'
-import {
-  InfoContainer,
-  CustomTypography,
-  CardContainer,
-  TwoColsContainer,
-  InfoInput,
-  InfoDivider,
-} from './styled'
+import { CardContent } from '@mui/material'
+import { InfoContainer, CardContainer } from './styled'
 import { CustomCard } from '@/components/CustomCard/CustomCard'
-import { InfoCardContent } from '@/componets/CustomCardContent/InfoCardContent'
+import { InfoCardContent } from '@/components/CustomCardContent/InfoCardContent'
+import { CustomTypography } from '@/components/CustomCardContent/styled'
+
+export const inputDate = [
+  { block: 1, name: 'Lend', adornment: 'ETH' },
+  { block: 1, name: 'Borrow', adornment: 'ETH' },
+  { block: 1, name: 'Laverage', adornment: 'x' },
+  { block: 1, name: 'ROE', adornment: '%' },
+  { block: 2, name: 'Health factor', adornment: '' },
+  { block: 2, name: 'Liquidation price', adornment: '' },
+  { block: 2, name: 'Current price', adornment: '' },
+  { block: 3, name: 'Short hedge', adornment: '' },
+  { block: 3, name: 'Funding profit', adornment: '' },
+  { block: 3, name: 'Initial', adornment: '' },
+]
 
 export const InfoCard = () => {
+  const inputDateBlock1 = inputDate.filter((item) => item.block === 1)
+  const inputDateBlock2 = inputDate.filter((item) => item.block === 2)
+  const inputDateBlock3 = inputDate.filter((item) => item.block === 3)
   return (
     <InfoContainer>
       <CustomCard>
@@ -26,127 +36,12 @@ export const InfoCard = () => {
             Info
           </CustomTypography>
           <CardContainer>
-            <InfoCardContent></InfoCardContent>
-            <TwoColsContainer>
-              <CustomTypography>Borrow</CustomTypography>
-              <InfoInput
-                variant="standard"
-                placeholder={'0.0'}
-                slotProps={{
-                  input: {
-                    disableUnderline: true,
-                    endAdornment: (
-                      <InputAdornment position="start">ETH</InputAdornment>
-                    ),
-                  },
-                }}
-              />
-            </TwoColsContainer>
-            <TwoColsContainer>
-              <CustomTypography>Leverage</CustomTypography>
-              <InfoInput
-                variant="standard"
-                placeholder={'0.0'}
-                slotProps={{
-                  input: {
-                    disableUnderline: true,
-                    endAdornment: (
-                      <InputAdornment position="start">X</InputAdornment>
-                    ),
-                  },
-                }}
-              />
-            </TwoColsContainer>
-            <TwoColsContainer>
-              <CustomTypography>ROE</CustomTypography>
-              <InfoInput
-                variant="standard"
-                placeholder={'0.0'}
-                slotProps={{
-                  input: {
-                    disableUnderline: true,
-                    endAdornment: (
-                      <InputAdornment position="start">%</InputAdornment>
-                    ),
-                  },
-                }}
-              />
-            </TwoColsContainer>
-
-            <InfoDivider>Liquidation info</InfoDivider>
-            <TwoColsContainer>
-              <CustomTypography>Health factor</CustomTypography>
-              <InfoInput
-                variant="standard"
-                placeholder={'0.0'}
-                slotProps={{
-                  input: {
-                    disableUnderline: true,
-                  },
-                }}
-              />
-            </TwoColsContainer>
-            <TwoColsContainer>
-              <CustomTypography>Liquidation price</CustomTypography>
-              <InfoInput
-                variant="standard"
-                placeholder={'0.0'}
-                slotProps={{
-                  input: {
-                    disableUnderline: true,
-                  },
-                }}
-              />
-            </TwoColsContainer>
-            <TwoColsContainer>
-              <CustomTypography>Current Price</CustomTypography>
-              <InfoInput
-                variant="standard"
-                placeholder={'0.0'}
-                slotProps={{
-                  input: {
-                    disableUnderline: true,
-                  },
-                }}
-              />
-            </TwoColsContainer>
-            <InfoDivider>Short hedge</InfoDivider>
-            <TwoColsContainer>
-              <CustomTypography>Short hedge</CustomTypography>
-              <InfoInput
-                variant="standard"
-                placeholder={'0.0'}
-                slotProps={{
-                  input: {
-                    disableUnderline: true,
-                  },
-                }}
-              />
-            </TwoColsContainer>
-            <TwoColsContainer>
-              <CustomTypography>Funding profit</CustomTypography>
-              <InfoInput
-                variant="standard"
-                placeholder={'0.0'}
-                slotProps={{
-                  input: {
-                    disableUnderline: true,
-                  },
-                }}
-              />
-            </TwoColsContainer>
-            <TwoColsContainer>
-              <CustomTypography>Initial</CustomTypography>
-              <InfoInput
-                variant="standard"
-                placeholder={'0.0'}
-                slotProps={{
-                  input: {
-                    disableUnderline: true,
-                  },
-                }}
-              />
-            </TwoColsContainer>
+            <InfoCardContent title="Final State" inputs={inputDateBlock1} />
+            <InfoCardContent
+              title="Liquidation info"
+              inputs={inputDateBlock2}
+            />
+            <InfoCardContent title="Short Hedge" inputs={inputDateBlock3} />
           </CardContainer>
         </CardContent>
       </CustomCard>
