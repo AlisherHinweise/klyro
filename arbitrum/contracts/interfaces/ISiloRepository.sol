@@ -2,6 +2,7 @@
 pragma solidity 0.8.13;
 
 import "./ISilo.sol";
+import "./IERC20.sol";
 
 interface ISiloRepository {
     enum ActionType { Deposit, Withdraw, Borrow, Repay }
