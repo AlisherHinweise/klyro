@@ -1,10 +1,11 @@
 import React from 'react'
-import { CardContent, InputAdornment, Slider } from '@mui/material'
+import { CardContent, InputAdornment } from '@mui/material'
 import {
   ButtonContainer,
   CardContainer,
   CustomButton,
   CustomContainer,
+  CustomSlider,
   CustomTypography,
   InfoContainer,
   TwoColsContainer,
@@ -62,13 +63,12 @@ export const AmountCard: React.FC = () => {
             </TwoColsContainer>
             <CustomContainer>
               <CustomTypography>Leverage: </CustomTypography>
-              <Slider
+              <CustomSlider
                 aria-label="Always visible"
                 step={1}
                 min={1}
                 max={5}
                 marks={marks}
-                sx={{}}
               />
             </CustomContainer>
           </CardContainer>
