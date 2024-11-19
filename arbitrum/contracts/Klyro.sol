@@ -16,10 +16,11 @@ contract Klyro is Ownable, ReentrancyGuard, Pausable {
 
     uint8 public constant MAX_LEVERAGE = 3;
     uint256 public constant MIN_DEPOSIT = 0.01 ether;
-    IWrappedNativeToken public constant WETH = IWrappedNativeToken(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
-    IERC20 public constant USDC = IERC20(0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8);
     uint24 public constant POOL_FEE = 3000;
+    uint8 public constant MAX_LTV = 74;
+    IERC20 public constant USDC = IERC20(0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8);
     ISilo public constant SILO_POOL = ISilo(0x7bec832FF8060cD396645Ccd51E9E9B0E5d8c6e4);
+    IWrappedNativeToken public constant WETH = IWrappedNativeToken(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
 
 
     struct Position {
@@ -145,28 +146,68 @@ contract Klyro is Ownable, ReentrancyGuard, Pausable {
     }
 
     function closePosition(uint256 _index) external nonReentrant whenNotPaused hasPosition(_index) {
+        Position storage position = positions[msg.sender][_index];
+
+        uint8 leverage = position.leverage;
+        uint256 totalDeposited = position.depositedAmount;
+        uint256 currentDeposit = totalDeposited;
+        
         // reset user data
-        delete postions[msg.sender][_index];
+        delete positions[msg.sender][positionIndex];
 
         // execute withdrawal from Silo
-        ISiloRepository.Action[] memory actions = new ISiloRepository.Action[](1);
-        actions[0] = ISiloRepository.Action({
+        for (uint256 i = leverage - 1; i > 0; i--) {
+            uint256 withdrawAmount = maxAvailableForWithdraw(currentDeposit); // need to be done
+
+            ISiloRepository.Action[] memory withdrawAction = new ISiloRepository.Action[](1);
+            withdrawAction[0] = ISiloRepository.Action({
+                actionType: ISiloRepository.ActionType.Withdraw,
+                silo: SILO_POOL,
+                asset: WETH,
+                amount: withdrawAmount,
+                collateralOnly: false
+            });
+            siloRepository.execute(withdrawAction);
+
+            WETH.withdraw(withdrawAmount);
+
+            uint256 usdcReceived = swapExactInputSingle(withdrawAmount);
+
+            ISiloRepository.Action[] memory repayAction = new ISiloRepository.Action[](1);
+            repayAction[0] = ISiloRepository.Action({
+                actionType: ISiloRepository.ActionType.Repay,
+                silo: SILO_POOL,
+                asset: USDC,
+                amount: usdcReceived,
+                collateralOnly: false
+            });
+            siloRepository.execute(repayAction);
+
+            currentDeposit -= withdrawAmount;
+        }
+
+        uint256 finalWithdrawAmount = maxAvailableForWithdraw(currentDeposit);
+    
+        ISiloRepository.Action[] memory finalWithdrawAction = new ISiloRepository.Action[](1);
+        finalWithdrawAction[0] = ISiloRepository.Action({
             actionType: ISiloRepository.ActionType.Withdraw,
             silo: SILO_POOL,
             asset: WETH,
-            amount: user.depositedAmount + user.borrowedAmount,
+            amount: finalWithdrawAmount,
             collateralOnly: false
         });
+        siloRepository.execute(finalWithdrawAction);
 
-        siloRepository.execute(actions);
+        WETH.withdraw(finalWithdrawAmount);
+        payable(msg.sender).transfer(finalWithdrawAmount);
 
         uint256 earnedAmount = calculateProfit(user); // need to be done
 
-        emit PositionClosed(msg.sender, user.depositedAmount, earnedAmount);
+        emit PositionClosed(msg.sender, totalDeposited, earnedAmount);
     }
 
     function maxAvailableForBorrow(uint256 collateralAmount) internal pure returns (uint256) {
-        return (collateralAmount * 74) / 100;
+        return (collateralAmount * MAX_LTV) / 100;
     }
 
     // need to use an oracle. no oracle for now
