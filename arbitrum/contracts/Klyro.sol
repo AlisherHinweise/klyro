@@ -232,6 +232,7 @@ contract Klyro is Ownable, ReentrancyGuard, Pausable {
 
         // The call to `exactInputSingle` executes the swap.
         amountOut = swapRouter.exactInputSingle(params);
+    }
 
     function pause() external onlyOwner {
         _pause();
