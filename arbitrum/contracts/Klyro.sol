@@ -8,16 +8,23 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import '@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol';
 import '@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol';
 import "./interfaces/IWrappedNativeToken.sol";
+import "./interfaces/ISiloRouter.sol";
 import "./interfaces/ISiloRepository.sol";
+import "./interfaces/ISiloLens.sol";
 
+/// @title Klyro basic contract
+/// @author https://github.com/cunnily
+/// @notice Protocol built on top of Silo for earning interest with delta-neutral strategy
 contract Klyro is Ownable, ReentrancyGuard, Pausable {
+    ISiloRouter public immutable siloRouter;
     ISiloRepository public immutable siloRepository;
+    ISiloLens public immutable siloLens;
     ISwapRouter public immutable swapRouter;
 
-    uint8 public constant MAX_LEVERAGE = 3;
-    uint256 public constant MIN_DEPOSIT = 0.01 ether;
+    uint8 public maxLeverage;
+    uint256 public minDeposit;
+
     uint24 public constant POOL_FEE = 3000;
-    uint8 public constant MAX_LTV = 74;
     IERC20 public constant USDC = IERC20(0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8);
     ISilo public constant SILO_POOL = ISilo(0x7bec832FF8060cD396645Ccd51E9E9B0E5d8c6e4);
     IWrappedNativeToken public constant WETH = IWrappedNativeToken(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
@@ -25,8 +32,7 @@ contract Klyro is Ownable, ReentrancyGuard, Pausable {
 
     struct Position {
         uint256 depositedAmount;
-        uint256 borrowedAmount;
-        uint8 leverage,
+        uint8 leverage;
         uint256 liquidationPrice;
     }
 
@@ -49,9 +55,13 @@ contract Klyro is Ownable, ReentrancyGuard, Pausable {
     error NoPositionFound();
     error UnauthorizedAccess();
 
-    constructor(ISiloRepository _siloRepository, ISwapRouter _swapRouter) Ownable(msg.sender) {
+    constructor(ISiloRouter _siloRouter, ISiloRepository _siloRepository, ISiloLens _siloLens, ISwapRouter _swapRouter) Ownable(msg.sender) {
+        siloRouter = _siloRouter;
         siloRepository = _siloRepository;
+        siloLens = _siloLens;
         swapRouter = _swapRouter;
+        maxLeverage = 3;
+        minDeposit = 0.01 ether;
     }
 
     receive() external payable {
@@ -59,7 +69,7 @@ contract Klyro is Ownable, ReentrancyGuard, Pausable {
     }
 
     modifier sufficientDeposit() {
-        if (msg.value < MIN_DEPOSIT) {
+        if (msg.value < minDeposit) {
             revert InsufficientDeposit();
         }
         _;
@@ -71,64 +81,68 @@ contract Klyro is Ownable, ReentrancyGuard, Pausable {
         }
         _;
     }
+    
+    function setMaxLeverage(uint256 _leverage) external onlyOwner {
+        maxLeverage = _leverage;
+    }
 
-    function getPosition(address user) internal view returns (Position memory) {
-        return positions[user];
+    function setMinDeposit(uint256 _deposit) external onlyOwner {
+        minDeposit = _deposit;
     }
 
     function openPosition(uint8 _leverage) external payable nonReentrant whenNotPaused sufficientDeposit {
-        if (_leverage == 0 || _leverage > MAX_LEVERAGE) {
+        if (_leverage == 0 || _leverage > maxLeverage) {
             revert InvalidLeverage();
         }
 
-        uint256 liquidationPrice = calculateLiquidationPrice(msg.value, _leverage); // need to be done
+        uint256 liquidationPrice = calculateLiquidationPrice(msg.value, _leverage); /// need to be done
         uint256 totalDeposited = msg.value;
         uint256 currentDeposit = msg.value;
 
         WETH.deposit{value: msg.value}();
-        TransferHelper.safeApprove(address(WETH), address(siloRepository), msg.value);
+        TransferHelper.safeApprove(address(WETH), address(siloRouter), msg.value);
 
         // execute deposit on Silo
-        ISiloRepository.Action[] memory firstAction = new ISiloRepository.Action[](1);
-        actions[0] = ISiloRepository.Action({
-            actionType: ISiloRepository.ActionType.Deposit,
+        ISiloRouter.Action[] memory firstAction = new ISiloRouter.Action[](1);
+        actions[0] = ISiloRouter.Action({
+            actionType: ISiloRouter.ActionType.Deposit,
             silo: SILO_POOL,
             asset: WETH,
             amount: msg.value,
             collateralOnly: false
         });
 
-        siloRepository.execute(firstAction);
+        siloRouter.execute(firstAction);
 
         for (uint256 i = 1; i < _leverage; i++) {
             //borrow USDC
-            uint256 borrowAmount = maxAvailableForBorrow(currentDeposit);
+            uint256 borrowAmount = _maxAvailableForBorrow(currentDeposit);
 
-            ISiloRepository.Action[] memory borrowAction = new ISiloRepository.Action[](1);
-            borrowAction[0] = ISiloRepository.Action({
-                actionType: ISiloRepository.ActionType.Borrow,
+            ISiloRouter.Action[] memory borrowAction = new ISiloRouter.Action[](1);
+            borrowAction[0] = ISiloRouter.Action({
+                actionType: ISiloRouter.ActionType.Borrow,
                 silo: SILO_POOL,
                 asset: USDC,
                 amount: borrowAmount,
                 collateralOnly: false
             });
-            siloRepository.execute(borrowAction);
+            siloRouter.execute(borrowAction);
 
             //perform swap from USDC.e back to ETH to continue looping
-            uint256 ethReceived = swapExactInputSingle(borrowAmount);
+            uint256 ethReceived = _swapExactInputSingle(borrowAmount);
 
             WETH.deposit{value: ethReceived}();
-            TransferHelper.safeApprove(address(WETH), address(siloRepository), ethReceived);
+            TransferHelper.safeApprove(address(WETH), address(siloRouter), ethReceived);
 
-            ISiloRepository.Action[] memory depositAction = new ISiloRepository.Action[](1);
-            depositAction[0] = ISiloRepository.Action({
-                actionType: ISiloRepository.ActionType.Deposit,
+            ISiloRouter.Action[] memory depositAction = new ISiloRouter.Action[](1);
+            depositAction[0] = ISiloRouter.Action({
+                actionType: ISiloRouter.ActionType.Deposit,
                 silo: SILO_POOL,
                 asset: WETH,
                 amount: ethReceived,
                 collateralOnly: false
             });
-            siloRepository.execute(depositAction);
+            siloRouter.execute(depositAction);
 
             currentDeposit = ethReceived;
             totalDeposited += ethReceived;
@@ -137,7 +151,6 @@ contract Klyro is Ownable, ReentrancyGuard, Pausable {
         // adding info about user's position to database
         positions[msg.sender].push(Position({
             depositedAmount: msg.value;
-            borrowedAmount: totalDeposited - msg.value; //is it even needed? borrow should't be an option for user
             leverage: _leverage;
             liquidationPrice: liquidationPrice;
         }));
@@ -145,6 +158,7 @@ contract Klyro is Ownable, ReentrancyGuard, Pausable {
         emit PositionOpened(msg.sender, msg.value, _leverage, liquidationPrice);
     }
 
+    /// flashLiquidate method can be used - 0x7bec832FF8060cD396645Ccd51E9E9B0E5d8c6e4
     function closePosition(uint256 _index) external nonReentrant whenNotPaused hasPosition(_index) {
         Position storage position = positions[msg.sender][_index];
 
@@ -153,65 +167,75 @@ contract Klyro is Ownable, ReentrancyGuard, Pausable {
         uint256 currentDeposit = totalDeposited;
         
         // reset user data
-        delete positions[msg.sender][positionIndex];
+        delete positions[msg.sender][_index];
+
+        ///MaxLTV - currentLTV withdraw => swap ETH-USDC => repay USDC
 
         // execute withdrawal from Silo
         for (uint256 i = leverage - 1; i > 0; i--) {
-            uint256 withdrawAmount = maxAvailableForWithdraw(currentDeposit); // need to be done
+            uint256 withdrawAmount = _maxAvailableForWithdraw(currentDeposit); /// need to be done
 
-            ISiloRepository.Action[] memory withdrawAction = new ISiloRepository.Action[](1);
-            withdrawAction[0] = ISiloRepository.Action({
-                actionType: ISiloRepository.ActionType.Withdraw,
+            ISiloRouter.Action[] memory withdrawAction = new ISiloRouter.Action[](1);
+            withdrawAction[0] = ISiloRouter.Action({
+                actionType: ISiloRouter.ActionType.Withdraw,
                 silo: SILO_POOL,
                 asset: WETH,
                 amount: withdrawAmount,
                 collateralOnly: false
             });
-            siloRepository.execute(withdrawAction);
+            siloRouter.execute(withdrawAction);
 
             WETH.withdraw(withdrawAmount);
 
-            uint256 usdcReceived = swapExactInputSingle(withdrawAmount);
+            uint256 usdcReceived = _swapExactInputSingle(withdrawAmount);
 
-            ISiloRepository.Action[] memory repayAction = new ISiloRepository.Action[](1);
-            repayAction[0] = ISiloRepository.Action({
-                actionType: ISiloRepository.ActionType.Repay,
+            ISiloRouter.Action[] memory repayAction = new ISiloRouter.Action[](1);
+            repayAction[0] = ISiloRouter.Action({
+                actionType: ISiloRouter.ActionType.Repay,
                 silo: SILO_POOL,
                 asset: USDC,
                 amount: usdcReceived,
                 collateralOnly: false
             });
-            siloRepository.execute(repayAction);
+            siloRouter.execute(repayAction);
 
             currentDeposit -= withdrawAmount;
         }
 
-        uint256 finalWithdrawAmount = maxAvailableForWithdraw(currentDeposit);
+        uint256 finalWithdrawAmount = _maxAvailableForWithdraw(currentDeposit);
     
-        ISiloRepository.Action[] memory finalWithdrawAction = new ISiloRepository.Action[](1);
-        finalWithdrawAction[0] = ISiloRepository.Action({
-            actionType: ISiloRepository.ActionType.Withdraw,
+        ISiloRouter.Action[] memory finalWithdrawAction = new ISiloRouter.Action[](1);
+        finalWithdrawAction[0] = ISiloRouter.Action({
+            actionType: ISiloRouter.ActionType.Withdraw,
             silo: SILO_POOL,
             asset: WETH,
             amount: finalWithdrawAmount,
             collateralOnly: false
         });
-        siloRepository.execute(finalWithdrawAction);
+        siloRouter.execute(finalWithdrawAction);
 
         WETH.withdraw(finalWithdrawAmount);
         payable(msg.sender).transfer(finalWithdrawAmount);
 
-        uint256 earnedAmount = calculateProfit(user); // need to be done
+        uint256 earnedAmount = calculateProfit(user); /// need to be done
 
         emit PositionClosed(msg.sender, totalDeposited, earnedAmount);
     }
 
-    function maxAvailableForBorrow(uint256 collateralAmount) internal pure returns (uint256) {
-        return (collateralAmount * MAX_LTV) / 100;
+    function _getMaximumLTV() internal view returns (uint256) {
+        return ISiloRepository.getMaximumLTV(address(SILO_POOL), address(WETH)) / 10 ** 16 - 1;
     }
 
-    // need to use an oracle. no oracle for now
-    function swapExactInputSingle(uint256 amountIn) external returns (uint256 amountOut) {
+    function _maxAvailableForBorrow(uint256 collateralAmount) internal pure returns (uint256) {
+        return (collateralAmount * _getMaximumLTV()) / 100;
+    }
+
+    function _maxAvailableForWithdraw() internal returns (uint256) {
+        
+    }
+
+    /// need to use an oracle. no oracle for now
+    function _swapExactInputSingle(uint256 amountIn) internal returns (uint256 amountOut) {
         // Transfer the specified amount of USDC to this contract.
         TransferHelper.safeTransferFrom(address(USDC), msg.sender, address(this), amountIn);
 
