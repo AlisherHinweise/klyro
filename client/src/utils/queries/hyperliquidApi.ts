@@ -1,3 +1,4 @@
+'use client'
 import { useMutation } from '@tanstack/react-query'
 import { createOrder } from '../create-order/createOrder'
 import { cancelOrder } from '../cancel-order/cancel-order'
