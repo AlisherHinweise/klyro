@@ -9,6 +9,7 @@
       "prettier/prettier": 0,
       "no-console": "warn",
       "no-debugger": "warn",
-      "@typescript-eslint/ban-ts-comment": "warn"
+      "@typescript-eslint/ban-ts-comment": "warn",
+      "@typescript-eslint/no-unused-vars": "warn"
     }
   }
