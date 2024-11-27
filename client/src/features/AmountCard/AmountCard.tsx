@@ -141,7 +141,7 @@ export const AmountCard: React.FC = () => {
           price,
           params
         )
-
+        setOpen(true)
         setIsSuccess(true)
       } else {
         setOpen(true)
