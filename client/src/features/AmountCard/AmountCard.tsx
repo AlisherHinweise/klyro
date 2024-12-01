@@ -1,11 +1,11 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect} from 'react'
 import {
   Alert,
   CardContent,
   InputAdornment,
   Snackbar,
-  SnackbarCloseReason,
+  SnackbarCloseReason
 } from '@mui/material'
 import {
   ButtonContainer,
@@ -30,8 +30,17 @@ export const AmountCard: React.FC = () => {
   const [isSuccess, setIsSuccess] = useState<boolean | null>(null)
   const [open, setOpen] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState(false)
-  const { address } = useAccount()
-  const isWalletConnected = Boolean(address) // Проверяем, подключен ли кошелек
+  const { address, isConnected } = useAccount()
+  const [isWalletConnected, setIsWalletConnected] = useState(false);
+
+  useEffect(() => {
+    if (isConnected) {
+      setIsWalletConnected(true);
+    } else {
+      setIsWalletConnected(false);
+    }
+  }, [isConnected]);
+
   const marks = [
     {
       value: 1,
@@ -208,16 +217,22 @@ export const AmountCard: React.FC = () => {
             color="success"
             variant="contained"
             onClick={handleCreatePosition}
+            disabled={!isWalletConnected} // Блокируем кнопку
           >
             CREATE POSITION
           </CustomButton>
-          <CustomButton color="secondary" variant="contained">
+          <CustomButton 
+            color="secondary" 
+            variant="contained"
+            disabled={!isWalletConnected} // Блокируем кнопку
+          >
             MODIFY POSITION
           </CustomButton>
           <CustomButton
             color="error"
             variant="contained"
             onClick={handleClosePosition}
+            disabled={!isWalletConnected} // Блокируем кнопку
           >
             CLOSE POSITION
           </CustomButton>
