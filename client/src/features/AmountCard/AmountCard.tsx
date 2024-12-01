@@ -31,6 +31,7 @@ export const AmountCard: React.FC = () => {
   const [open, setOpen] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState(false)
   const { address } = useAccount()
+  const isWalletConnected = Boolean(address) // Проверяем, подключен ли кошелек
   const marks = [
     {
       value: 1,
@@ -175,6 +176,7 @@ export const AmountCard: React.FC = () => {
                   sx={{ width: '100%' }}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
+                  disabled={!isWalletConnected} // Отключаем поле, если кошелек не подключен
                   slotProps={{
                     input: {
                       endAdornment: (
@@ -194,6 +196,7 @@ export const AmountCard: React.FC = () => {
                   marks={marks}
                   value={leverage}
                   onChange={(e, newValue) => setLeverage(newValue as number)}
+                  disabled={!isWalletConnected} // Отключаем слайдер, если кошелек не подключен
                 />
               </CustomContainer>
             </CardContainer>
