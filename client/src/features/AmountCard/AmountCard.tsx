@@ -1,11 +1,11 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect} from 'react'
 import {
   Alert,
   CardContent,
   InputAdornment,
   Snackbar,
-  SnackbarCloseReason,
+  SnackbarCloseReason
 } from '@mui/material'
 import {
   ButtonContainer,
@@ -30,7 +30,17 @@ export const AmountCard: React.FC = () => {
   const [isSuccess, setIsSuccess] = useState<boolean | null>(null)
   const [open, setOpen] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState(false)
-  const { address } = useAccount()
+  const { address, isConnected } = useAccount()
+  const [isWalletConnected, setIsWalletConnected] = useState(false);
+
+  useEffect(() => {
+    if (isConnected) {
+      setIsWalletConnected(true);
+    } else {
+      setIsWalletConnected(false);
+    }
+  }, [isConnected]);
+
   const marks = [
     {
       value: 1,
@@ -175,6 +185,7 @@ export const AmountCard: React.FC = () => {
                   sx={{ width: '100%' }}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
+                  disabled={!isWalletConnected} // Отключаем поле, если кошелек не подключен
                   slotProps={{
                     input: {
                       endAdornment: (
@@ -194,6 +205,7 @@ export const AmountCard: React.FC = () => {
                   marks={marks}
                   value={leverage}
                   onChange={(e, newValue) => setLeverage(newValue as number)}
+                  disabled={!isWalletConnected} // Отключаем слайдер, если кошелек не подключен
                 />
               </CustomContainer>
             </CardContainer>
@@ -205,16 +217,22 @@ export const AmountCard: React.FC = () => {
             color="success"
             variant="contained"
             onClick={handleCreatePosition}
+            disabled={!isWalletConnected} // Блокируем кнопку
           >
             CREATE POSITION
           </CustomButton>
-          <CustomButton color="secondary" variant="contained">
+          <CustomButton 
+            color="secondary" 
+            variant="contained"
+            disabled={!isWalletConnected} // Блокируем кнопку
+          >
             MODIFY POSITION
           </CustomButton>
           <CustomButton
             color="error"
             variant="contained"
             onClick={handleClosePosition}
+            disabled={!isWalletConnected} // Блокируем кнопку
           >
             CLOSE POSITION
           </CustomButton>
