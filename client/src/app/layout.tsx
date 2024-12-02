@@ -4,8 +4,18 @@ import { ThemeProvider } from '@mui/material'
 import { theme } from '@/features/theme/theme'
 import WalletProvider from '@/features/context/WalletProvider'
 import Navbar from '@/features/Navbar/Navbar'
+import Head from 'next/head'
 
 const inter = Inter({ subsets: ['latin', 'cyrillic'] })
+
+export const metadata = {
+  title: 'klyro',
+  description: 'klyro platform',
+  icons: {
+    icon: '/logo_klyro.png',
+    apple: '/logo_klyro.png',
+  },
+}
 
 export default function RootLayout({
   children,
