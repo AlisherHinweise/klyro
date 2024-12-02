@@ -1,11 +1,11 @@
 'use client'
-import React, { useState, useEffect} from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Alert,
   CardContent,
   InputAdornment,
   Snackbar,
-  SnackbarCloseReason
+  SnackbarCloseReason,
 } from '@mui/material'
 import {
   ButtonContainer,
@@ -31,15 +31,15 @@ export const AmountCard: React.FC = () => {
   const [open, setOpen] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState(false)
   const { address, isConnected } = useAccount()
-  const [isWalletConnected, setIsWalletConnected] = useState(false);
+  const [isWalletConnected, setIsWalletConnected] = useState(false)
 
   useEffect(() => {
     if (isConnected) {
-      setIsWalletConnected(true);
+      setIsWalletConnected(true)
     } else {
-      setIsWalletConnected(false);
+      setIsWalletConnected(false)
     }
-  }, [isConnected]);
+  }, [isConnected])
 
   const marks = [
     {
@@ -86,7 +86,7 @@ export const AmountCard: React.FC = () => {
 
       const symbol = 'ETH/USDC:USDC'
       const side = 'sell'
-      const amountInETH = parseFloat(amount)
+      const amountInUSD = parseFloat(amount)
 
       const params = {
         leverage: leverage.toString(),
@@ -95,8 +95,9 @@ export const AmountCard: React.FC = () => {
       await exchange.setMarginMode('isolated', symbol, params)
 
       const ticker = await exchange.fetchTicker(symbol)
+      const price = ticker.last || 1
 
-      const price = Number(ticker.last) * 0.95
+      const amountInETH = amountInUSD / price
 
       const order = await exchange.createOrder(
         symbol,
@@ -105,6 +106,7 @@ export const AmountCard: React.FC = () => {
         amountInETH,
         price
       )
+
       if (order) {
         setOpen(true)
         setIsSuccess(true)
@@ -118,7 +120,6 @@ export const AmountCard: React.FC = () => {
       setIsLoading(false)
     }
   }
-
   const handleClosePosition = async () => {
     setIsLoading(true)
     try {
@@ -189,7 +190,7 @@ export const AmountCard: React.FC = () => {
                   slotProps={{
                     input: {
                       endAdornment: (
-                        <InputAdornment position="start">ETH</InputAdornment>
+                        <InputAdornment position="start">USD</InputAdornment>
                       ),
                     },
                   }}
@@ -221,8 +222,8 @@ export const AmountCard: React.FC = () => {
           >
             CREATE POSITION
           </CustomButton>
-          <CustomButton 
-            color="secondary" 
+          <CustomButton
+            color="secondary"
             variant="contained"
             disabled={!isWalletConnected} // Блокируем кнопку
           >
@@ -252,3 +253,4 @@ export const AmountCard: React.FC = () => {
     </>
   )
 }
+
