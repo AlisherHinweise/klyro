@@ -22,10 +22,10 @@ export const LogoContainer = styled('div')`
   align-items: center;
 `
 
-export const LogoImage = styled('img')`
-  width: 30px;
-  height: 30px;
-  object-fit: cover;
+export const LogoImage = styled('div')`
+  width: 120px;
+  height: 100px;
+  position: relative;
 `
 
 export const NavbarBlur = styled('div')`
