@@ -22,11 +22,9 @@ import { CustomInput } from '@/components/CustomInput/CustomInput'
 import ccxt from 'ccxt'
 import { CandleLoading } from '@/components/CandleLoading/CandleLoading'
 import { useAccount } from 'wagmi'
+import { IAmountCardProps } from './model/types'
 
-export const AmountCard: React.FC = () => {
-  const [amount, setAmount] = useState('')
-  const [leverage, setLeverage] = useState(1)
-  const [orderId, setOrderId] = useState<string>('')
+export const AmountCard: React.FC<IAmountCardProps> = ({amount, setAmount, leverage, setLeverage, setOrderId, orderId}) => {
   const [isSuccess, setIsSuccess] = useState<boolean | null>(null)
   const [open, setOpen] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -253,4 +251,3 @@ export const AmountCard: React.FC = () => {
     </>
   )
 }
-

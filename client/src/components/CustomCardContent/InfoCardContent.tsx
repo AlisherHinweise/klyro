@@ -9,7 +9,7 @@ import {
 
 export interface InfoCardContentProps {
   title: string
-  inputs: { name: string; adornment: string }[]
+  inputs: { name: string; adornment: string; placeholder?: string | number }[]
 }
 
 export const InfoCardContent: React.FC<InfoCardContentProps> = ({
@@ -24,7 +24,7 @@ export const InfoCardContent: React.FC<InfoCardContentProps> = ({
           <CustomTypography>{input.name}</CustomTypography>
           <InfoInput
             variant="standard"
-            placeholder="0.0"
+            placeholder={input.placeholder ? String(input.placeholder) : '-'}
             slotProps={{
               input: {
                 disableUnderline: true,
