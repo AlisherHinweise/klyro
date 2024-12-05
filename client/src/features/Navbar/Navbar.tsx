@@ -17,7 +17,7 @@ export default function Navbar() {
         <ConnectButton
           chainStatus="icon"
           accountStatus="address"
-          showBalance={false}
+          showBalance={true}
         />
       </div>
       <NavbarBlur />
