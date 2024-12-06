@@ -1,4 +1,3 @@
-// useHyperliquidBalance.ts
 import { useState, useEffect } from 'react'
 import ccxt from 'ccxt'
 import { useAccount } from 'wagmi'
@@ -18,10 +17,10 @@ export const useHyperliquidBalance = () => {
       exchange.setSandboxMode(true)
 
       const balance = await exchange.fetchBalance()
-      setUsdcBalance(balance.USDC.total || 0) // Установка баланса USDC
+      setUsdcBalance(balance.USDC.total || 0)
     } catch (error) {
       console.error('Ошибка при получении баланса:', error)
-      setUsdcBalance(null) // Сброс баланса в случае ошибки
+      setUsdcBalance(null)
     } finally {
       setIsLoading(false)
     }

@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Alert,
   CardContent,
@@ -37,11 +37,20 @@ export const AmountCard: React.FC<IAmountCardProps> = ({
   const [open, setOpen] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState(false)
   const { address, isConnected } = useAccount()
+  const [isWalletConnected, setIsWalletConnected] = useState(false)
   const {
     usdcBalance,
     isLoading: isBalanceLoading,
     fetchBalance,
   } = useHyperliquidBalance() // Используем хук
+
+  useEffect(() => {
+    if (isConnected) {
+      setIsWalletConnected(true)
+    } else {
+      setIsWalletConnected(false)
+    }
+  }, [isConnected])
 
   const marks = [
     { value: 1, label: 'x1' },
@@ -55,7 +64,10 @@ export const AmountCard: React.FC<IAmountCardProps> = ({
     event?: React.SyntheticEvent | Event,
     reason?: SnackbarCloseReason
   ) => {
-    if (reason === 'clickaway') return
+    if (reason === 'clickaway') {
+      return
+    }
+
     setOpen(false)
   }
 
@@ -95,10 +107,58 @@ export const AmountCard: React.FC<IAmountCardProps> = ({
         setOpen(true)
         setIsSuccess(true)
         setOrderId(order.id)
-        await fetchBalance() // Обновляем баланс
+        await fetchBalance() // Обновляем баланс после создания позиции
       }
     } catch (error) {
       console.error('Error creating position:', error)
+      setOpen(true)
+      setIsSuccess(false)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleClosePosition = async () => {
+    setIsLoading(true)
+    try {
+      const exchange = new ccxt.hyperliquid()
+      exchange.walletAddress = address!
+      exchange.privateKey = process.env.NEXT_PUBLIC_API_PRIVATE_KEY!
+
+      exchange.setSandboxMode(true)
+
+      const symbol = 'ETH/USDC:USDC'
+
+      const position = await exchange.fetchPosition(symbol)
+
+      if (position && position.contracts && position.contracts > 0) {
+        const contractsToClose = position.contracts
+        const side = position.side === 'short' ? 'buy' : 'sell'
+
+        const ticker = await exchange.fetchTicker(symbol)
+        const price = ticker.last
+
+        const params = {
+          reduceOnly: true,
+        }
+
+        await exchange.createOrder(
+          symbol,
+          'market',
+          side,
+          contractsToClose,
+          price,
+          params
+        )
+        setOpen(true)
+        setIsSuccess(true)
+        await fetchBalance() // Обновляем баланс после закрытия позиции
+      } else {
+        setOpen(true)
+        setIsSuccess(false)
+      }
+    } catch (error) {
+      console.error('Ошибка при закрытии позиции:', error)
       setOpen(true)
       setIsSuccess(false)
     } finally {
@@ -119,9 +179,8 @@ export const AmountCard: React.FC<IAmountCardProps> = ({
             </CustomTypography>
             <CustomTypography>
               Balance:{' '}
-              {usdcBalance !== null ? `${usdcBalance} USDC` : 'Loading...'}
-            </CustomTypography>{' '}
-            {/* Выводим баланс */}
+              {isBalanceLoading ? 'Loading...' : `${usdcBalance || 0} USDC`}
+            </CustomTypography>
             <CardContainer>
               <TwoColsContainer>
                 <CustomTypography>Amount: </CustomTypography>
@@ -130,7 +189,7 @@ export const AmountCard: React.FC<IAmountCardProps> = ({
                   sx={{ width: '100%' }}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  disabled={!isConnected || isBalanceLoading} // Отключаем, если идет загрузка
+                  disabled={!isWalletConnected || isBalanceLoading} // Отключаем поле, если баланс загружается
                   slotProps={{
                     input: {
                       endAdornment: (
@@ -150,7 +209,7 @@ export const AmountCard: React.FC<IAmountCardProps> = ({
                   marks={marks}
                   value={leverage}
                   onChange={(e, newValue) => setLeverage(newValue as number)}
-                  disabled={!isConnected || isBalanceLoading} // Отключаем, если идет загрузка
+                  disabled={!isWalletConnected || isBalanceLoading} // Отключаем слайдер, если баланс загружается
                 />
               </CustomContainer>
             </CardContainer>
@@ -162,9 +221,24 @@ export const AmountCard: React.FC<IAmountCardProps> = ({
             color="success"
             variant="contained"
             onClick={handleCreatePosition}
-            disabled={!isConnected || isBalanceLoading}
+            disabled={!isWalletConnected || isBalanceLoading} // Блокируем кнопку
           >
             CREATE POSITION
+          </CustomButton>
+          <CustomButton
+            color="secondary"
+            variant="contained"
+            disabled={!isWalletConnected || isBalanceLoading} // Блокируем кнопку
+          >
+            MODIFY POSITION
+          </CustomButton>
+          <CustomButton
+            color="error"
+            variant="contained"
+            onClick={handleClosePosition}
+            disabled={!isWalletConnected || isBalanceLoading} // Блокируем кнопку
+          >
+            CLOSE POSITION
           </CustomButton>
         </ButtonContainer>
       </InfoContainer>
