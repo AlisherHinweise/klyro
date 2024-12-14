@@ -120,8 +120,8 @@ export const AmountCard: React.FC<IAmountCardProps> = ({
                 {positionsError}
               </CustomTypography>
             ) : positions.length > 0 ? (
-              positions.map((position) => (
-                <CustomTypography key={position.id}>
+              positions.map((position, index) => (
+                <CustomTypography key={position.id || index}>
                   {position.symbol}: {position.contracts} contracts @{' '}
                   {position.entryPrice} USD
                 </CustomTypography>
