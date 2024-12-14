@@ -24,6 +24,7 @@ import { useAccount } from 'wagmi'
 import { IAmountCardProps } from './model/types'
 import { useHyperliquidBalance } from '@/utils/CustomHooks/useHyperLiquidBalance'
 import { useHyperliquidPositions } from '@/utils/CustomHooks/useHyperliquidPositions '
+import ccxt from 'ccxt'
 
 export const AmountCard: React.FC<IAmountCardProps> = ({
   amount,
@@ -50,12 +51,8 @@ export const AmountCard: React.FC<IAmountCardProps> = ({
   } = useHyperliquidPositions(address)
 
   useEffect(() => {
-    if (isConnected) {
-      setIsWalletConnected(true)
-    } else {
-      setIsWalletConnected(false)
-    }
-  }, [isConnected])
+    setIsWalletConnected(!!address && isConnected)
+  }, [isConnected, address])
 
   const marks = [
     { value: 1, label: 'x1' },
@@ -72,14 +69,46 @@ export const AmountCard: React.FC<IAmountCardProps> = ({
     if (reason === 'clickaway') {
       return
     }
-
     setOpen(false)
   }
 
   const handleCreatePosition = async () => {
     setIsLoading(true)
     try {
-      // Logic to create position (unchanged)
+      const exchange = new ccxt.hyperliquid({
+        walletAddress: address,
+        privateKey: process.env.NEXT_PUBLIC_API_PRIVATE_KEY,
+        sandbox: true,
+      })
+
+      const symbol = 'ETH/USDC:USDC'
+      const side = 'sell'
+      const amountInUSD = parseFloat(amount)
+
+      const params = {
+        leverage: leverage.toString(),
+      }
+
+      await exchange.setMarginMode('isolated', symbol, params)
+
+      const ticker = await exchange.fetchTicker(symbol)
+      const price = ticker.last || 1
+
+      const amountInETH = amountInUSD / price
+
+      const order = await exchange.createOrder(
+        symbol,
+        'market',
+        side,
+        amountInETH,
+        price
+      )
+
+      if (order) {
+        setOpen(true)
+        setIsSuccess(true)
+        setOrderId(order.id)
+      }
     } catch (error) {
       console.error('Error creating position:', error)
       setOpen(true)
@@ -92,7 +121,40 @@ export const AmountCard: React.FC<IAmountCardProps> = ({
   const handleClosePosition = async () => {
     setIsLoading(true)
     try {
-      // Logic to close position (unchanged)
+      const exchange = new ccxt.hyperliquid({
+        walletAddress: address,
+        privateKey: process.env.NEXT_PUBLIC_API_PRIVATE_KEY,
+        sandbox: true,
+      })
+
+      const symbol = 'ETH/USDC:USDC'
+      const position = await exchange.fetchPosition(symbol)
+
+      if (position && position.contracts && position.contracts > 0) {
+        const contractsToClose = position.contracts
+        const side = position.side === 'short' ? 'buy' : 'sell'
+
+        const ticker = await exchange.fetchTicker(symbol)
+        const price = ticker.last
+
+        const params = {
+          reduceOnly: true,
+        }
+
+        await exchange.createOrder(
+          symbol,
+          'market',
+          side,
+          contractsToClose,
+          price,
+          params
+        )
+        setOpen(true)
+        setIsSuccess(true)
+      } else {
+        setOpen(true)
+        setIsSuccess(false)
+      }
     } catch (error) {
       console.error('Error closing position:', error)
       setOpen(true)
@@ -141,7 +203,7 @@ export const AmountCard: React.FC<IAmountCardProps> = ({
             </CustomTypography>
             <CustomTypography>
               Balance:{' '}
-              {isBalanceLoading ? 'Loading...' : `${usdcBalance || 0} USDC`}
+              {isBalanceLoading ? 'Loading...' : `$${usdcBalance || 0} USDC`}
             </CustomTypography>
             <CardContainer>
               <TwoColsContainer>
