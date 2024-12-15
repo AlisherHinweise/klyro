@@ -2,8 +2,15 @@ import { useState, useEffect } from 'react'
 import ccxt from 'ccxt'
 import { Position as CCXTPosition } from 'ccxt'
 
+// interface Position {
+//   symbol: string
+//   amount: number
+//   price: number
+// }
+
 export const useHyperliquidPositions = (address: string | undefined) => {
   const [positions, setPositions] = useState<CCXTPosition[]>([])
+  //   const [positions, setPositions] = useState<Position[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -15,11 +22,10 @@ export const useHyperliquidPositions = (address: string | undefined) => {
       setError(null)
 
       try {
-        const exchange = new ccxt.hyperliquid({
-          walletAddress: address,
-          privateKey: process.env.NEXT_PUBLIC_API_PRIVATE_KEY,
-          sandbox: true,
-        })
+        const exchange = new ccxt.hyperliquid()
+        exchange.walletAddress = address
+        exchange.privateKey = process.env.NEXT_PUBLIC_API_PRIVATE_KEY!
+        exchange.setSandboxMode(true)
 
         const openPositions = await exchange.fetchPositions()
         setPositions(openPositions)
