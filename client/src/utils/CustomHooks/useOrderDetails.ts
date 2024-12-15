@@ -24,14 +24,7 @@ export const useOrderDetails = (address: string | undefined) => {
       const symbol = 'ETH/USDC:USDC'
       const position = await exchange.fetchPosition(symbol)
 
-      const positions = await exchange.fetchPositions()
-      console.log('Positions:', positions)
-
       console.log('Position Data:', position)
-
-      console.log('Position contracts:', position.contracts)
-      console.log('Position side:', position.side)
-      console.log('Position entryPrice:', position.entryPrice)
 
       if (position) {
         setOrderDetails({
