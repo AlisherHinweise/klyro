@@ -1,11 +1,12 @@
 'use client'
+
 import React, { useState, useEffect } from 'react'
 import {
   Alert,
   CardContent,
-  InputAdornment,
   Snackbar,
   SnackbarCloseReason,
+  InputAdornment,
 } from '@mui/material'
 import {
   ButtonContainer,
@@ -19,11 +20,12 @@ import {
 } from './styled'
 import { CustomCard } from '@/components/CustomCard/CustomCard'
 import { CustomInput } from '@/components/CustomInput/CustomInput'
-import ccxt from 'ccxt'
 import { CandleLoading } from '@/components/CandleLoading/CandleLoading'
 import { useAccount } from 'wagmi'
 import { IAmountCardProps } from './model/types'
+import { useOrderDetails } from '@/utils/CustomHooks/useOrderDetails'
 import { useHyperliquidBalance } from '@/utils/CustomHooks/useHyperLiquidBalance'
+import ccxt from 'ccxt'
 
 export const AmountCard: React.FC<IAmountCardProps> = ({
   amount,
@@ -31,34 +33,21 @@ export const AmountCard: React.FC<IAmountCardProps> = ({
   leverage,
   setLeverage,
   setOrderId,
-  orderId,
 }) => {
   const [isSuccess, setIsSuccess] = useState<boolean | null>(null)
   const [open, setOpen] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState(false)
   const { address, isConnected } = useAccount()
-  const [isWalletConnected, setIsWalletConnected] = useState(false)
   const {
     usdcBalance,
     isLoading: isBalanceLoading,
     fetchBalance,
-  } = useHyperliquidBalance() // Используем хук
-
-  useEffect(() => {
-    if (isConnected) {
-      setIsWalletConnected(true)
-    } else {
-      setIsWalletConnected(false)
-    }
-  }, [isConnected])
-
-  const marks = [
-    { value: 1, label: 'x1' },
-    { value: 2, label: 'x2' },
-    { value: 3, label: 'x3' },
-    { value: 4, label: 'x4' },
-    { value: 5, label: 'x5' },
-  ]
+  } = useHyperliquidBalance()
+  const {
+    orderDetails,
+    isLoading: isOrderLoading,
+    fetchOrderDetails,
+  } = useOrderDetails(address)
 
   const handleClose = (
     event?: React.SyntheticEvent | Event,
@@ -67,7 +56,6 @@ export const AmountCard: React.FC<IAmountCardProps> = ({
     if (reason === 'clickaway') {
       return
     }
-
     setOpen(false)
   }
 
@@ -76,7 +64,7 @@ export const AmountCard: React.FC<IAmountCardProps> = ({
     try {
       const exchange = new ccxt.hyperliquid()
       exchange.walletAddress = address!
-      exchange.privateKey = process.env.NEXT_PUBLIC_API_PRIVATE_KEY
+      exchange.privateKey = process.env.NEXT_PUBLIC_API_PRIVATE_KEY!
 
       exchange.setSandboxMode(true)
 
@@ -107,7 +95,8 @@ export const AmountCard: React.FC<IAmountCardProps> = ({
         setOpen(true)
         setIsSuccess(true)
         setOrderId(order.id)
-        await fetchBalance() // Обновляем баланс после создания позиции
+        await fetchBalance()
+        await fetchOrderDetails()
       }
     } catch (error) {
       console.error('Error creating position:', error)
@@ -128,7 +117,6 @@ export const AmountCard: React.FC<IAmountCardProps> = ({
       exchange.setSandboxMode(true)
 
       const symbol = 'ETH/USDC:USDC'
-
       const position = await exchange.fetchPosition(symbol)
 
       if (position && position.contracts && position.contracts > 0) {
@@ -152,13 +140,14 @@ export const AmountCard: React.FC<IAmountCardProps> = ({
         )
         setOpen(true)
         setIsSuccess(true)
-        await fetchBalance() // Обновляем баланс после закрытия позиции
+        await fetchBalance()
+        await fetchOrderDetails()
       } else {
         setOpen(true)
         setIsSuccess(false)
       }
     } catch (error) {
-      console.error('Ошибка при закрытии позиции:', error)
+      console.error('Error closing position:', error)
       setOpen(true)
       setIsSuccess(false)
     } finally {
@@ -189,7 +178,7 @@ export const AmountCard: React.FC<IAmountCardProps> = ({
                   sx={{ width: '100%' }}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  disabled={!isWalletConnected || isBalanceLoading} // Отключаем поле, если баланс загружается
+                  disabled={isBalanceLoading}
                   slotProps={{
                     input: {
                       endAdornment: (
@@ -202,17 +191,33 @@ export const AmountCard: React.FC<IAmountCardProps> = ({
               <CustomContainer>
                 <CustomTypography>Leverage: </CustomTypography>
                 <CustomSlider
-                  aria-label="Always visible"
                   step={1}
                   min={1}
                   max={5}
-                  marks={marks}
                   value={leverage}
                   onChange={(e, newValue) => setLeverage(newValue as number)}
-                  disabled={!isWalletConnected || isBalanceLoading} // Отключаем слайдер, если баланс загружается
+                  disabled={isBalanceLoading}
                 />
               </CustomContainer>
             </CardContainer>
+            <CustomTypography sx={{ marginTop: 2 }}>
+              Open Position Details:
+            </CustomTypography>
+            {isOrderLoading ? (
+              <CustomTypography>Loading...</CustomTypography>
+            ) : orderDetails ? (
+              <>
+                <CustomTypography>
+                  Contracts: {orderDetails.contracts}
+                </CustomTypography>
+                <CustomTypography>Side: {orderDetails.side}</CustomTypography>
+                <CustomTypography>
+                  Price: {orderDetails.price.toFixed(2)}
+                </CustomTypography>
+              </>
+            ) : (
+              <CustomTypography>No open positions</CustomTypography>
+            )}
           </CardContent>
         </CustomCard>
 
@@ -221,22 +226,15 @@ export const AmountCard: React.FC<IAmountCardProps> = ({
             color="success"
             variant="contained"
             onClick={handleCreatePosition}
-            disabled={!isWalletConnected || isBalanceLoading} // Блокируем кнопку
+            disabled={isBalanceLoading}
           >
             CREATE POSITION
-          </CustomButton>
-          <CustomButton
-            color="secondary"
-            variant="contained"
-            disabled={!isWalletConnected || isBalanceLoading} // Блокируем кнопку
-          >
-            MODIFY POSITION
           </CustomButton>
           <CustomButton
             color="error"
             variant="contained"
             onClick={handleClosePosition}
-            disabled={!isWalletConnected || isBalanceLoading} // Блокируем кнопку
+            disabled={isBalanceLoading}
           >
             CLOSE POSITION
           </CustomButton>
@@ -249,7 +247,7 @@ export const AmountCard: React.FC<IAmountCardProps> = ({
           sx={{ width: '100%' }}
         >
           {isSuccess
-            ? 'Your position successfully opened!'
+            ? 'Operation successful!'
             : 'Oops! Something went wrong...'}
         </Alert>
       </Snackbar>
